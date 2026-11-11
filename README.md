@@ -30,7 +30,7 @@ TeamViewer keeps working. It runs as a background service, so unattended access 
    - Choose an admin password (type it twice).
    - Press **Save and start kiosk**.
 4. A **recovery code** appears. **Save it in your password manager.** This is Plan A if you forget the password.
-5. Optional: right-click the exe → *Show more options* → *Send to* → *Desktop (create shortcut)*. That gives you an easy way to turn the kiosk back on after you've exited it.
+5. A **Front Desk Kiosk** shortcut is put on the desktop automatically. Double-click it to turn the kiosk back on after you've exited it. If it's ever deleted: right-click the exe → *Show more options* → *Send to* → *Desktop (create shortcut)*.
 
 The kiosk now starts automatically every time Windows signs in.
 

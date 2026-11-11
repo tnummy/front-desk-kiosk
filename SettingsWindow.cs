@@ -299,6 +299,7 @@ public sealed class SettingsWindow : Form
         }
 
         Lockdown.SetAutoStart(cfg.AutoStart);
+        if (firstRun) Lockdown.CreateDesktopShortcut();
         newPassword.Clear();
         newPassword2.Clear();
         bool wasFirstRun = firstRun;

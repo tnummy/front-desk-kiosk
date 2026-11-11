@@ -75,6 +75,30 @@ static class Lockdown
         }
     }
 
+    /// <summary>Puts a "Front Desk Kiosk" shortcut on the desktop (used to turn the kiosk back on after exiting).</summary>
+    public static void CreateDesktopShortcut()
+    {
+        try
+        {
+            if (Environment.ProcessPath is not { } exe) return;
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType == null) return;
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            dynamic link = shell.CreateShortcut(Path.Combine(desktop, "Front Desk Kiosk.lnk"));
+            link.TargetPath = exe;
+            link.WorkingDirectory = Path.GetDirectoryName(exe);
+            link.IconLocation = exe + ",0";
+            link.Description = "Start the front desk kiosk";
+            link.Save();
+            Log.Write("Desktop shortcut created");
+        }
+        catch (Exception ex)
+        {
+            Log.Write("Could not create desktop shortcut: " + ex.Message);
+        }
+    }
+
     static void SetPolicies(bool on)
     {
         foreach (var (keyPath, name) in Policies)

@@ -11,6 +11,7 @@
     <RootNamespace>FrontDeskKiosk</RootNamespace>
     <Version>1.0.0</Version>
     <Product>Front Desk Kiosk</Product>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
 
     <!-- One self-contained .exe: no .NET install needed on the PC -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
