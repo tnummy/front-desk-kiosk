@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.Win32;
 
 namespace FrontDeskKiosk;
@@ -10,7 +11,7 @@ namespace FrontDeskKiosk;
 ///  - per-user Windows policies (these work on Windows Home) that remove Task Manager, Lock,
 ///    Sign out and Change password from the Ctrl+Alt+Del screen
 ///  - keeps the screen from sleeping
-/// Stop() undoes all of it.
+/// Stop() undoes all of it, putting back any policy values that were there before.
 /// </summary>
 static class Lockdown
 {
@@ -99,20 +100,82 @@ static class Lockdown
         }
     }
 
+    // Remembers what the policies were before the kiosk touched them, so exiting puts back
+    // anything an IT department (or the owner) had already set instead of just deleting it.
+    // Written once per lockdown session and only removed on a clean exit, so a crash-restart
+    // never mistakes the kiosk's own values for the originals.
+    static string BackupPath => Path.Combine(KioskConfig.Dir, "policy-backup.json");
+
     static void SetPolicies(bool on)
     {
+        if (on) BackupPolicies();
+        var backup = on ? null : LoadBackup();
+
         foreach (var (keyPath, name) in Policies)
         {
             try
             {
                 using var key = Registry.CurrentUser.CreateSubKey(keyPath);
-                if (on) key.SetValue(name, 1, RegistryValueKind.DWord);
-                else key.DeleteValue(name, throwOnMissingValue: false);
+                if (on)
+                    key.SetValue(name, 1, RegistryValueKind.DWord);
+                else if (backup != null && backup.TryGetValue(BackupId(keyPath, name), out var original) && original is int value)
+                    key.SetValue(name, value, RegistryValueKind.DWord);
+                else
+                    key.DeleteValue(name, throwOnMissingValue: false);
             }
             catch (Exception ex)
             {
-                Log.Write($"Could not set policy {name}: {ex.Message}");
+                Log.Write($"Could not {(on ? "set" : "restore")} policy {name}: {ex.Message}");
             }
+        }
+
+        if (!on)
+        {
+            try { File.Delete(BackupPath); } catch { }
+        }
+    }
+
+    static string BackupId(string keyPath, string name) => keyPath + "\\" + name;
+
+    static void BackupPolicies()
+    {
+        if (File.Exists(BackupPath)) return; // still the same lockdown session (e.g. after a crash)
+        var backup = new Dictionary<string, int?>();
+        foreach (var (keyPath, name) in Policies)
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(keyPath);
+                backup[BackupId(keyPath, name)] = key?.GetValue(name) is int value ? value : null;
+            }
+            catch
+            {
+                backup[BackupId(keyPath, name)] = null;
+            }
+        }
+        try
+        {
+            Directory.CreateDirectory(KioskConfig.Dir);
+            File.WriteAllText(BackupPath, JsonSerializer.Serialize(backup));
+        }
+        catch (Exception ex)
+        {
+            Log.Write("Could not save policy backup: " + ex.Message);
+        }
+    }
+
+    static Dictionary<string, int?>? LoadBackup()
+    {
+        try
+        {
+            return File.Exists(BackupPath)
+                ? JsonSerializer.Deserialize<Dictionary<string, int?>>(File.ReadAllText(BackupPath))
+                : null;
+        }
+        catch (Exception ex)
+        {
+            Log.Write("Could not read policy backup: " + ex.Message);
+            return null;
         }
     }
 

@@ -1,8 +1,28 @@
+<p align="center"><img src="icon.png" width="128" alt="Front Desk Kiosk icon"></p>
+
 # Front Desk Kiosk
 
-A small Windows program that locks the front-desk PC to one web page. It shows the page fullscreen with no tabs and no address bar, and stays on top of everything else. Leaving it takes a password.
+A small, free Windows program that locks a PC to **one web page**: a check-in screen, booking page, menu, sign-up form, or whatever you need. The page fills the screen with no tabs, no address bar, and no way to switch to other apps. Getting out takes an admin password.
 
-The page is shown with Microsoft's WebView2, the Chromium engine that Chrome is built on. It comes with Windows 11, so there's nothing else to install.
+It's meant for reception desks, waiting rooms and shop counters. It works on **Windows 10 and 11, including Home edition**, which can't use Windows' own kiosk mode.
+
+- One file, no installer, nothing else to install
+- Change the web address and password any time from a password-protected admin window
+- Starts automatically when Windows signs in
+- Remote-control tools like TeamViewer or AnyDesk keep working
+- Recovery code, plus documented fallbacks, in case the password is forgotten
+
+## Contents
+
+- [What it blocks](#what-it-blocks)
+- [How secure is it?](#how-secure-is-it)
+- [Installing](#installing)
+- [Daily use](#daily-use)
+- [Forgot the password?](#forgot-the-password)
+- [Removing it](#removing-it)
+- [Files and privacy](#files-and-privacy)
+- [Building from source](#building-from-source)
+- [License](#license)
 
 ## What it blocks
 
@@ -10,105 +30,139 @@ The page is shown with Microsoft's WebView2, the Chromium engine that Chrome is 
 |---|---|
 | Windows key, Start menu, taskbar | Blocked / covered |
 | Alt+Tab, Alt+Esc, Alt+F4, Ctrl+Esc | Blocked |
-| Ctrl+N, Ctrl+T, Ctrl+P, F5, right-click menu, dev tools | Turned off |
+| Ctrl+N, Ctrl+T, Ctrl+P, F5, right-click menu, developer tools | Turned off |
 | Links that open a new tab or window | Open in the same view instead |
 | Downloads | Cancelled |
 | Ctrl+Shift+Esc (Task Manager) | Blocked |
-| Ctrl+Alt+Del | Can't be blocked by any program, but **Task Manager, Lock, Sign out and Change password are removed** from that screen. Only *Switch user*, the power button and *Cancel* remain. |
+| Ctrl+Alt+Del | No program can block this. Instead, **Task Manager, Lock, Sign out and Change password are removed** from that screen while the kiosk runs. Only *Switch user*, the power button and *Cancel* are left. |
+| Second monitor | Covered with a black screen |
 | Wi-Fi not ready at boot / page fails to load | Retries every 15 seconds |
 | Program crashes | Restarts itself |
 | Screen sleep | Kept awake while the kiosk is running |
 
-TeamViewer keeps working. It runs as a background service, so unattended access connects as usual.
+Pages are shown with Microsoft's **WebView2**, the Chromium engine that Chrome and Edge are built on. It comes with Windows 11 and is already on most Windows 10 PCs; if it's missing, install the free [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/). Sites behave like they do in Chrome. Cookies and logins are kept between restarts, so a page that signs in once stays signed in.
 
-## Installing on the PC
+## How secure is it?
 
-1. Copy `FrontDeskKiosk.exe` somewhere permanent, e.g. `C:\FrontDeskKiosk\FrontDeskKiosk.exe`. Don't run it from Downloads or a USB stick, because auto-start remembers this location.
-2. Double-click it. Windows will probably warn **"Windows protected your PC"** because the program isn't from a known publisher. Click **More info → Run anyway**.
-3. **First-time setup** window:
-   - Paste the web address.
+It's built to stop **customers, visitors and staff from wandering off the page**. It doesn't stop someone determined who has physical access to the PC. Anyone who can restart the computer into Safe Mode can turn it off. That's deliberate, and it's the last-resort recovery route described below. Windows' own kiosk mode (Windows Pro and above) has the same limitation.
+
+- Passwords are never stored. Only a salted PBKDF2-SHA256 hash is saved.
+- Everything it changes in Windows is per-user and is put back when you exit properly. That includes any of these restrictions you already had in place.
+- It doesn't need administrator rights and doesn't send any data anywhere.
+
+## Installing
+
+1. **Download `FrontDeskKiosk.exe`** from the Releases page, or [build it yourself](#building-from-source).
+2. Put it somewhere permanent, e.g. `C:\FrontDeskKiosk\FrontDeskKiosk.exe`. Auto-start remembers this location, so don't run it from Downloads or a USB stick.
+3. Double-click it. Because the program isn't code-signed, Windows will probably show **"Windows protected your PC"**. Click **More info → Run anyway**.
+4. In the **first-time setup** window:
+   - Enter the web address.
    - Choose an admin password (type it twice).
    - Press **Save and start kiosk**.
-4. A **recovery code** appears. **Save it in your password manager.** This is Plan A if you forget the password.
-5. A **Front Desk Kiosk** shortcut is put on the desktop automatically. Double-click it to turn the kiosk back on after you've exited it. If it's ever deleted: right-click the exe → *Show more options* → *Send to* → *Desktop (create shortcut)*.
+5. A **recovery code** appears. **Save it in a password manager or write it down.** It works in place of the password if you forget it.
+6. A **Front Desk Kiosk** shortcut is put on the desktop. Use it to turn the kiosk back on after exiting.
 
-The kiosk now starts automatically every time Windows signs in.
+> **Before relying on it:** if you manage the PC remotely, set up your remote-access tool for unattended access and **test a remote connection first**.
 
-### Make the PC sign in by itself (optional)
+The kiosk now starts every time Windows signs in.
 
-So that the kiosk is up after a power cut or Windows update without anyone typing a PIN:
+### Make the PC sign in by itself (recommended)
+
+So the kiosk comes back after a power cut or Windows update without anyone typing a PIN:
 
 1. **Settings → Accounts → Sign-in options**: turn **off** "For improved security, only allow Windows Hello sign-in…".
 2. Press **Win+R**, type `netplwiz`, press Enter.
-3. Untick **"Users must enter a user name and password to use this computer"**, press OK, and enter the Windows account password.
+3. Untick **"Users must enter a user name and password to use this computer"**, press OK, and enter the account's password.
 
-(If that checkbox doesn't appear, Microsoft's free **Autologon** tool from Sysinternals does the same thing.)
+If that checkbox doesn't appear, Microsoft's free [Autologon](https://learn.microsoft.com/sysinternals/downloads/autologon) tool does the same job.
 
-### TeamViewer
-
-Make sure TeamViewer is set up for **unattended access** (assigned to your TeamViewer account, "Start TeamViewer with Windows" on). Test a remote connection **before** relying on the kiosk.
+A dedicated Windows account just for the kiosk is a good idea, but not required.
 
 ## Daily use
 
-**To open the admin window:** press **Ctrl+Shift+F12**, or tap the **top-left corner of the screen 5 times** quickly (for a touchscreen).
+**Open the admin window:** press **Ctrl+Shift+F12**, or tap the **top-left corner of the screen 5 times** quickly (for touchscreens). This works through remote-control tools too.
 
-In the admin window:
-- **Back to kiosk** needs no password. It also reloads the home page, so staff can use it to fix a stuck page.
-- **Unlock** with the password to:
-  - change the **web address**
-  - change the **password** (the current password is needed first)
-  - turn auto-start on/off
-  - make a new recovery code
-  - **Exit to Windows**
-- If nobody touches it, the window closes and the kiosk resumes by itself after 60–90 seconds.
+| In the admin window | Password needed? |
+|---|---|
+| **Back to kiosk** (also reloads the home page, handy for a stuck page) | No |
+| Change the **web address** | Yes |
+| Change the **password** | Yes (current password first) |
+| Turn auto-start on or off | Yes |
+| Make a new recovery code | Yes |
+| **Exit to Windows** | Yes |
 
-**When the kiosk starts**, the same window appears with a 20-second countdown, then the kiosk starts automatically. That gives you a chance to unlock and change settings at boot.
+If nobody touches the admin window, it closes and the kiosk carries on after 60–90 seconds.
 
-**To turn it back on after exiting:** double-click the desktop shortcut, or just restart the PC.
+**At startup** the same window appears with a 20-second countdown, then the kiosk starts automatically. That gives you a chance to unlock and change settings at boot.
 
-All of this also works through TeamViewer. Send Ctrl+Shift+F12 from the TeamViewer toolbar or keyboard.
+**After exiting**, turn the kiosk back on with the desktop shortcut, or restart the PC.
 
-## Plan B: forgot the password
+## Forgot the password?
 
-Try these in order:
+Try these in order. Replace `<user>` with the Windows user name.
 
-1. **Recovery code.** Type it into the *Admin password* box and press Unlock (dashes and capital letters don't matter). Then set a new password.
+1. **Recovery code.** Type it into the *Admin password* box and press Unlock. Dashes and capital letters don't matter. Then choose a new password.
 
-2. **TeamViewer file transfer (no password needed).**
-   1. Connect with TeamViewer → **Files & Extras → File transfer**.
-   2. On the PC side, go to `C:\Users\<windows user>\AppData\Local\FrontDeskKiosk\` and **delete `settings.json`**.
-   3. In the remote session, press **Ctrl+Alt+Del** (TeamViewer toolbar → Actions), click the **power icon** (bottom right) → **Restart**.
-   4. The kiosk comes back up in **first-time setup**, where you choose a new password and paste the web address again.
+2. **Remote file access (no password needed).** With a tool like TeamViewer (*Files & Extras → File transfer*):
+   1. Delete `C:\Users\<user>\AppData\Local\FrontDeskKiosk\settings.json`.
+   2. Send **Ctrl+Alt+Del** and click the **power icon → Restart**.
+   3. The kiosk comes back in first-time setup, where you choose a new password and enter the web address again.
 
-   Logins saved by the website (the `Browser` folder) are kept.
+   Website logins are kept.
 
-3. **At the PC, no remote access.** The kiosk doesn't start in Safe Mode:
+3. **At the PC.** The kiosk doesn't start in Safe Mode:
    1. Press **Ctrl+Alt+Del**, then hold **Shift** while clicking the **power icon → Restart**.
-   2. Go to **Troubleshoot → Advanced options → Startup Settings → Restart**, then press **4** for Safe Mode.
-   3. Sign in. Safe Mode needs the account's actual **password**. A PIN doesn't work there; for a Microsoft account it's the Microsoft account password.
-   4. Delete `C:\Users\<windows user>\AppData\Local\FrontDeskKiosk\settings.json` and restart normally.
+   2. Choose **Troubleshoot → Advanced options → Startup Settings → Restart**, then press **4** for Safe Mode.
+   3. Sign in. Safe Mode needs the account's actual **password**. A PIN doesn't work; for a Microsoft account, use the Microsoft account password.
+   4. Delete the same `settings.json` file and restart normally.
 
-   If Shift+Restart doesn't bring up the blue menu: turn the PC off with the power button while Windows is loading, twice in a row. The third boot opens the same recovery menu.
+   If Shift+Restart doesn't open the blue menu: turn the PC off with the power button while Windows is loading, twice in a row. The third boot opens the recovery menu.
 
 ## Removing it
 
-Unlock → untick auto-start → **Exit to Windows**. Then delete the exe and the folder `C:\Users\<windows user>\AppData\Local\FrontDeskKiosk\`.
+Unlock → untick auto-start → **Exit to Windows**. Then delete the exe, the desktop shortcut and `C:\Users\<user>\AppData\Local\FrontDeskKiosk\`.
 
-If the program was ever force-killed and Task Manager / Lock / Sign out are still missing on the normal desktop: start the kiosk once and exit it properly, which removes those restrictions.
+If the program was ever force-closed and Task Manager / Lock / Sign out are still missing afterwards: start the kiosk once and exit it properly. That restores them.
 
-## Files it uses
+## Files and privacy
 
-`C:\Users\<windows user>\AppData\Local\FrontDeskKiosk\`
-- `settings.json`: web address, auto-start setting, **hashed** password and recovery code (never stored in readable form)
-- `Browser\`: the web view's cookies and logins
-- `kiosk.log`: troubleshooting log
+Everything lives in `C:\Users\<user>\AppData\Local\FrontDeskKiosk\`:
+
+| File | Contents |
+|---|---|
+| `settings.json` | Web address, auto-start setting, **hashed** password and recovery code |
+| `policy-backup.json` | Original Windows settings, kept only while the kiosk is running |
+| `Browser\` | The web view's cookies and logins |
+| `kiosk.log` | Troubleshooting log (no passwords) |
+
+Windows settings it changes while running (all under `HKEY_CURRENT_USER`, all restored on exit):
+
+- `Software\Microsoft\Windows\CurrentVersion\Policies\System`: `DisableTaskMgr`, `DisableLockWorkstation`, `DisableChangePassword`
+- `Software\Microsoft\Windows\CurrentVersion\Policies\Explorer`: `NoLogoff`
+- `Software\Microsoft\Windows\CurrentVersion\Run`: `FrontDeskKiosk` (auto-start, while enabled)
+
+Nothing is sent anywhere except the web page you choose to show.
 
 ## Building from source
 
-Needs the .NET 8 SDK (works from macOS too):
+You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). It builds on Windows, macOS or Linux:
 
 ```bash
 dotnet publish -c Release -o publish
 ```
 
-The output is a single self-contained `publish/FrontDeskKiosk.exe` (~70 MB). The PC doesn't need .NET installed.
+The result is a single self-contained `publish/FrontDeskKiosk.exe` (~70 MB). The PC running it doesn't need .NET installed.
+
+| File | What it does |
+|---|---|
+| `KioskForm.cs` | Full-screen window and browser |
+| `SettingsWindow.cs` | Start-up / admin window |
+| `Lockdown.cs` | Keyboard blocking, Windows restrictions, auto-start, desktop shortcut |
+| `KioskConfig.cs` | Settings file and password hashing |
+| `Program.cs` | Start-up, single instance, crash restart |
+
+Some antivirus tools are wary of unsigned programs that intercept the keyboard. Building it yourself from this source is the easiest way to know exactly what you're running.
+
+## License
+
+[MIT](LICENSE). Free to use, change and share. Provided as-is, with no warranty.
